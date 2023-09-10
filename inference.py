@@ -14,6 +14,7 @@ from dataloader import get_test_augmentation, get_loader
 from model.TRACER import TRACER
 from util.utils import load_pretrained
 
+save_dir = '/user_data/junruz/imagenette_masks'
 
 class Inference():
     def __init__(self, args, save_path):
@@ -40,7 +41,8 @@ class Inference():
                                       num_workers=args.num_workers, transform=self.test_transform)
 
         if args.save_map is not None:
-            os.makedirs(os.path.join('mask', self.args.dataset + '_mask'), exist_ok=True)
+            os.makedirs(os.path.join(save_dir, 'train', os.path.split(self.args.dataset)[1]), exist_ok=True)
+            # os.makedirs(os.path.join('mask', self.args.dataset + '_mask'), exist_ok=True)
             # os.makedirs(os.path.join('object', self.args.dataset), exist_ok=True)
 
     def test(self):
@@ -63,7 +65,8 @@ class Inference():
                         output = (output.squeeze().detach().cpu().numpy() * 255.0).astype(np.uint8)
 
                         salient_object = self.post_processing(images[i], output, h, w)
-                        cv2.imwrite(os.path.join('mask', self.args.dataset + '_mask', image_name[i] + '.png'), output)
+                        # cv2.imwrite(os.path.join('mask', self.args.dataset + '_mask', image_name[i] + '.png'), output)
+                        cv2.imwrite(os.path.join(save_dir, 'train', os.path.split(self.args.dataset)[1], image_name[i] + '.png'), output)
                         # cv2.imwrite(os.path.join('object', self.args.dataset, image_name[i] + '.png'), salient_object)
 
         print(f'time: {time.time() - t:.3f}s')
