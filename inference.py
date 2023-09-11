@@ -14,7 +14,7 @@ from dataloader import get_test_augmentation, get_loader
 from model.TRACER import TRACER
 from util.utils import load_pretrained
 
-save_dir = '/user_data/junruz/imagenette_masks'
+save_dir = r"D:\LeeLab\Dataset\imagenette2\shapes"
 
 class Inference():
     def __init__(self, args, save_path):
@@ -33,15 +33,17 @@ class Inference():
         self.model.load_state_dict(path)
         print('###### pre-trained Model restored #####')
 
-        te_img_folder = os.path.join(args.data_path, args.dataset)
-        te_gt_folder = None
+        # te_img_folder = os.path.join(args.data_path, self.data_path)
+        # te_gt_folder = None
+        self.folder_list = os.listdir(self.args.dataset)
 
-        self.test_loader = get_loader(te_img_folder, te_gt_folder, edge_folder=None, phase='test',
-                                      batch_size=args.batch_size, shuffle=False,
-                                      num_workers=args.num_workers, transform=self.test_transform)
+        # self.test_loader = get_loader(te_img_folder, te_gt_folder, edge_folder=None, phase='test',
+        #                               batch_size=args.batch_size, shuffle=False,
+        #                               num_workers=args.num_workers, transform=self.test_transform)
 
         if args.save_map is not None:
-            os.makedirs(os.path.join(save_dir, 'train', os.path.split(self.args.dataset)[1]), exist_ok=True)
+            for folder in self.folder_list:
+                os.makedirs(os.path.join(save_dir, 'train', folder), exist_ok=True)
             # os.makedirs(os.path.join('mask', self.args.dataset + '_mask'), exist_ok=True)
             # os.makedirs(os.path.join('object', self.args.dataset), exist_ok=True)
 
@@ -50,24 +52,30 @@ class Inference():
         t = time.time()
 
         with torch.no_grad():
-            for i, (images, original_size, image_name) in enumerate(tqdm(self.test_loader)):
-                images = torch.tensor(images, device=self.device, dtype=torch.float32)
+            for folder in self.folder_list:
+                te_img_folder = os.path.join(self.args.dataset, folder)
+                te_gt_folder = None
+                test_loader = get_loader(te_img_folder, te_gt_folder, edge_folder=None, phase='test',
+                                              batch_size=self.args.batch_size, shuffle=False,
+                                              num_workers=self.args.num_workers, transform=self.test_transform)
+                for i, (images, original_size, image_name) in enumerate(tqdm(test_loader)):
+                    images = torch.tensor(images, device=self.device, dtype=torch.float32)
 
-                outputs, edge_mask, ds_map = self.model(images)
-                H, W = original_size
+                    outputs, edge_mask, ds_map = self.model(images)
+                    H, W = original_size
 
-                for i in range(images.size(0)):
-                    h, w = H[i].item(), W[i].item()
-                    output = F.interpolate(outputs[i].unsqueeze(0), size=(h, w), mode='bilinear')
+                    for i in range(images.size(0)):
+                        h, w = H[i].item(), W[i].item()
+                        output = F.interpolate(outputs[i].unsqueeze(0), size=(h, w), mode='bilinear')
 
-                    # Save prediction map
-                    if self.args.save_map is not None:
-                        output = (output.squeeze().detach().cpu().numpy() * 255.0).astype(np.uint8)
+                        # Save prediction map
+                        if self.args.save_map is not None:
+                            output = (output.squeeze().detach().cpu().numpy() * 255.0).astype(np.uint8)
 
-                        salient_object = self.post_processing(images[i], output, h, w)
-                        # cv2.imwrite(os.path.join('mask', self.args.dataset + '_mask', image_name[i] + '.png'), output)
-                        cv2.imwrite(os.path.join(save_dir, 'train', os.path.split(self.args.dataset)[1], image_name[i] + '.png'), output)
-                        # cv2.imwrite(os.path.join('object', self.args.dataset, image_name[i] + '.png'), salient_object)
+                            salient_object = self.post_processing(images[i], output, h, w)
+                            # cv2.imwrite(os.path.join('mask', self.args.dataset + '_mask', image_name[i] + '.png'), output)
+                            cv2.imwrite(os.path.join(save_dir, 'train', folder, image_name[i] + '.jpg'), output)
+                            # cv2.imwrite(os.path.join('object', self.args.dataset, image_name[i] + '.png'), salient_object)
 
         print(f'time: {time.time() - t:.3f}s')
 
